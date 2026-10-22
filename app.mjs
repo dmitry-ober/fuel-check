@@ -1,5 +1,5 @@
 // Thin DOM glue. All logic lives in ui-model.mjs / calc.mjs.
-import { buildViewModel, num } from './ui-model.mjs';
+import { buildViewModel, num, gpsSpeedToKt } from './ui-model.mjs';
 import { loadPersisted, savePersisted } from './storage.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -9,7 +9,7 @@ const el = {
   tabQuick: $('tab-quick'), tabPrecise: $('tab-precise'),
   points: $('points'), add: $('add-point'), you: $('you-line'),
   result: $('result'), big: $('fod-big'), sub: $('result-sub'), warn: $('result-warning'),
-  tpl: $('point-template'),
+  tpl: $('point-template'), badge: $('gps-badge'),
 };
 
 // Single source of truth for wind points. Each point keeps BOTH the quick
@@ -179,6 +179,50 @@ el.add.addEventListener('click', () => {
 });
 el.tabQuick.addEventListener('click', () => setMode('quick'));
 el.tabPrecise.addEventListener('click', () => setMode('precise'));
+
+// --- GPS ground-speed auto-fill ------------------------------------------
+// gpsState: 'gps' (live, writes #gs) | 'manual' (pilot edited #gs) | 'off' (denied/unavailable).
+// Programmatic .value writes do not fire 'input', so only real edits flip to manual.
+let gpsState = 'off';
+const BADGE = {
+  gps: ['GPS', 'GPS live: ground speed auto-fills'],
+  manual: ['MANUAL', 'Manual ground speed. Tap to resume GPS'],
+  off: ['GPS OFF', 'GPS unavailable'],
+};
+function setGps(next) {
+  gpsState = next;
+  const [text, label] = BADGE[next];
+  el.badge.textContent = text;
+  el.badge.title = label;
+  el.badge.setAttribute('aria-label', label);
+  el.badge.classList.toggle('off', next === 'off');
+  el.badge.classList.toggle('manual', next === 'manual');
+}
+let gpsWatching = false;
+function onGpsFix(pos) {
+  const kt = gpsSpeedToKt(pos?.coords?.speed);
+  if (gpsState === 'off') setGps('gps'); // recovered after an earlier error
+  if (kt == null || gpsState !== 'gps') return;
+  el.gs.value = String(kt);
+  render();
+}
+function onGpsError() {
+  // Permission denied or position unavailable: show GPS OFF, keep manual entry usable.
+  if (gpsState !== 'manual') setGps('off'); // never clobber the pilot's manual override
+}
+el.gs.addEventListener('input', () => { if (gpsWatching) setGps('manual'); });
+el.badge.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (gpsState === 'manual') setGps('gps');
+});
+setGps('off');
+try {
+  if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    gpsWatching = true;
+    navigator.geolocation.watchPosition(onGpsFix, onGpsError, { enableHighAccuracy: true, maximumAge: 2000 });
+    setGps('gps');
+  }
+} catch { gpsWatching = false; setGps('off'); }
 
 rebuildPoints();
 setMode('quick');

@@ -17,8 +17,12 @@ input::placeholder{color:#43556a;font-weight:400;font-size:13px}
 .unit{font-size:10px;color:var(--muted);margin-left:3px;font-weight:400;flex-shrink:0}
 .gps{border-color:#2e5d43}
 .gps .lab{color:var(--green)}
-.gpsdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:middle}
-.gpsdot.off{background:var(--muted)}
+.gpsbadge{position:relative;font:inherit;font-size:9.5px;letter-spacing:.06em;font-weight:700;text-transform:uppercase;color:var(--green);background:transparent;border:0;padding:0 0 0 12px;margin-left:4px;cursor:pointer}
+.gpsbadge::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--green)}
+.gpsbadge::after{content:"";position:absolute;inset:-16px -10px}
+.gpsbadge.off,.gpsbadge.manual{color:#7b8fa3}
+.gpsbadge.off::before,.gpsbadge.manual::before{background:#7b8fa3}
+.gpsbadge.off{cursor:default}
 .tabs{display:flex;background:var(--panel);border-radius:10px;padding:3px;margin:12px 0 8px}
 .tab{flex:1;min-height:44px;text-align:center;font:inherit;font-size:12px;font-weight:600;border:0;border-radius:8px;color:var(--muted);background:transparent;cursor:pointer}
 .tab.on{background:var(--tab-on);color:var(--text)}
