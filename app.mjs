@@ -1,6 +1,7 @@
 // Thin DOM glue. All logic lives in ui-model.mjs / calc.mjs.
 import { buildViewModel, num, gpsSpeedToKt } from './ui-model.mjs';
 import { loadPersisted, savePersisted } from './storage.mjs';
+import { declination, toDecimalYear } from './wmm.mjs';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -18,6 +19,22 @@ const el = {
 const points = [];
 let mode = 'quick';
 let magW = true; // mag var direction toggle: true = West (negative), default W
+
+// Mag var provenance: 'auto' = computed from GPS position this launch (WMM2025),
+// 'saved' = carried over from a previous session (may be outdated),
+// 'manual' = the pilot typed/toggled it this session (auto never overwrites it).
+let magVarSource = '';
+let magVarAutoDone = false;
+function setMagSrc(src) {
+  magVarSource = src;
+  const b = $('magvar-src');
+  if (!b) return;
+  b.textContent = src === 'auto' ? 'AUTO' : src === 'saved' ? 'SAVED' : src === 'manual' ? 'MANUAL' : '';
+  b.className = src === 'auto' ? 'src-badge auto' : 'src-badge';
+  b.title = src === 'saved' ? 'From a previous session — may be outdated. Updates from GPS position when a fix arrives.'
+    : src === 'auto' ? 'Computed from GPS position (WMM2025)'
+    : src === 'manual' ? 'Entered by you this session' : '';
+}
 
 // iPhone decimal keypad has no minus key: values are typed positive and the
 // sign comes from the HW/TW and E/W toggles.
@@ -196,16 +213,18 @@ el.tas.value = saved.tas;
   magW = !(mv !== '' && !mv.startsWith('-'));
   el.magVar.value = mv.replace(/^[+-]/, '');
   setMagSeg();
+  if (mv !== '') setMagSrc('saved');
 }
 
 [el.fob, el.ff, el.dist, el.gs, el.tas, el.garmin, el.course, el.magVar].forEach((inp) => {
   inp.addEventListener('input', () => {
+    if (inp === el.magVar) setMagSrc('manual');
     if (inp === el.ff || inp === el.tas || inp === el.magVar) persist();
     render();
   });
 });
 [['mv-w', true], ['mv-e', false]].forEach(([id, w]) => {
-  $(id).addEventListener('click', () => { magW = w; setMagSeg(); persist(); render(); });
+  $(id).addEventListener('click', () => { magW = w; setMagSeg(); setMagSrc('manual'); persist(); render(); });
 });
 el.points.addEventListener('input', onPointsInput);
 el.points.addEventListener('click', onPointsClick);
@@ -241,6 +260,7 @@ let gpsWatching = false;
 let gpsDenied = false; // permanent failure (PERMISSION_DENIED); cleared only by a real fix
 function onGpsFix(pos) {
   gpsDenied = false;
+  autoMagVar(pos);
   const kt = gpsSpeedToKt(pos?.coords?.speed);
   if (gpsState === 'off') setGps('gps'); // recovered after an earlier error
   // Stationary / sub-1-kt fixes are not written: keep whatever the pilot typed.
@@ -248,6 +268,27 @@ function onGpsFix(pos) {
   el.gs.value = String(kt);
   render();
 }
+// Once per launch: fill Mag var from the GPS position via the embedded
+// WMM2025 model. Never overwrites a value the pilot entered this session.
+function autoMagVar(pos) {
+  if (magVarAutoDone || magVarSource === 'manual') return;
+  const { latitude, longitude, altitude } = pos?.coords ?? {};
+  if (typeof latitude !== 'number' || typeof longitude !== 'number'
+    || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+  let dec;
+  try {
+    dec = declination(latitude, longitude, (Number.isFinite(altitude) ? altitude : 0) / 1000, toDecimalYear(new Date()));
+  } catch { return; }
+  if (!Number.isFinite(dec)) return;
+  magVarAutoDone = true;
+  magW = dec < 0;
+  el.magVar.value = String(Math.round(Math.abs(dec) * 10) / 10);
+  setMagSeg();
+  setMagSrc('auto');
+  persist();
+  render();
+}
+
 function onGpsError(err) {
   // Permission denied or position unavailable: show GPS OFF, keep manual entry usable.
   if (err && err.code === 1) gpsDenied = true;
@@ -272,7 +313,7 @@ rebuildPoints();
 setMode('quick');
 
 // Offline support: registration failure must never break the app.
-const APP_VERSION = 'v3';
+const APP_VERSION = 'v4';
 try {
   const verEl = document.getElementById('app-version');
   if (verEl) verEl.textContent = APP_VERSION;
