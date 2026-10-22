@@ -4,7 +4,7 @@ import {
 } from './calc.mjs';
 
 export function num(raw) {
-  const s = String(raw ?? '').trim();
+  const s = String(raw ?? '').trim().replace(',', '.');
   if (s === '' || !/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
   return Number(s);
 }
@@ -37,10 +37,12 @@ export function buildViewModel(state) {
   const precise = mode === 'precise';
 
   const missing = [];
-  for (const [k, v] of [['fob', fob], ['ff', ff], ['dist', dist], ['gs', gs], ['tas', tas]]) {
-    if (v == null) missing.push(k);
+  if (fob == null) missing.push('fob');
+  // Rates, speeds and distance must be strictly positive; 0/negative is invalid input.
+  for (const [k, v] of [['ff', ff], ['dist', dist], ['gs', gs], ['tas', tas]]) {
+    if (v == null || !(v > 0)) missing.push(k);
   }
-  if (precise && courseMag == null) missing.push('courseMag');
+  if (precise && points.length > 0 && courseMag == null) missing.push('courseMag');
   if (missing.length) return { status: 'incomplete', missing };
 
   const pointErrors = [];

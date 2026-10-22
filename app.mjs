@@ -17,6 +17,19 @@ const el = {
 // so switching tabs never erases either side.
 const points = [];
 let mode = 'quick';
+let magW = true; // mag var direction toggle: true = West (negative), default W
+
+// iPhone decimal keypad has no minus key: values are typed positive and the
+// sign comes from the HW/TW and E/W toggles.
+const signedMagVar = () => {
+  const raw = el.magVar.value.trim().replace(/^[+-]/, '');
+  return raw === '' ? '' : (magW ? '-' : '') + raw;
+};
+const signedComp = (p) => {
+  const v = num(p.comp);
+  return v == null ? null : (p.tw ? 1 : -1) * Math.abs(v); // HW = negative comp
+};
+const FIELD_NAME = { fob: 'fuel on board', ff: 'fuel flow', dist: 'distance', gs: 'ground speed', tas: 'TAS', courseMag: 'course' };
 
 const ERR_TEXT = {
   OUT_OF_ORDER: 'Distances must increase',
@@ -34,9 +47,9 @@ function readState() {
   return {
     fob: num(el.fob.value), ff: num(el.ff.value), dist: num(el.dist.value),
     gs: num(el.gs.value), tas: num(el.tas.value), garminFod: num(el.garmin.value),
-    mode, courseMag: num(el.course.value), magVar: num(el.magVar.value),
+    mode, courseMag: num(el.course.value), magVar: num(signedMagVar()),
     points: points.map((p) => ({
-      dist: num(p.dist), comp: num(p.comp), windDir: num(p.windDir), windSpeed: num(p.windSpeed),
+      dist: num(p.dist), comp: signedComp(p), windDir: num(p.windDir), windSpeed: num(p.windSpeed),
     })),
   };
 }
@@ -56,6 +69,7 @@ function rebuildPoints() {
     row.dataset.index = String(i);
     row.querySelector('.wpnum').textContent = String(i + 1);
     row.querySelectorAll('[data-field]').forEach((inp) => { inp.value = p[inp.dataset.field] ?? ''; });
+    row.querySelectorAll('[data-wind]').forEach((b) => setSeg(b, (b.dataset.wind === 'tw') === !!p.tw));
     el.points.appendChild(row);
     el.points.appendChild(makeBetween());
   });
@@ -69,7 +83,19 @@ function onPointsInput(e) {
   render();
 }
 
+function setSeg(btn, on) {
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', String(on));
+}
+
 function onPointsClick(e) {
+  const wind = e.target.closest('[data-wind]');
+  if (wind) {
+    points[Number(wind.closest('.wp').dataset.index)].tw = wind.dataset.wind === 'tw';
+    wind.closest('.wp').querySelectorAll('[data-wind]').forEach((b) => setSeg(b, b === wind));
+    render();
+    return;
+  }
   const btn = e.target.closest('[data-remove]');
   if (!btn) return;
   points.splice(Number(btn.closest('.wp').dataset.index), 1);
@@ -101,7 +127,7 @@ function render() {
   betweens.forEach((b) => { b.textContent = ''; });
 
   if (vm.status === 'incomplete') {
-    setNeutral('Enter missing values');
+    setNeutral('Enter: ' + vm.missing.map((k) => FIELD_NAME[k] ?? k).join(', '));
     return;
   }
   if (vm.status === 'error') {
@@ -153,14 +179,24 @@ function setMode(next) {
 
 function persist() {
   const s = storage();
-  if (s) savePersisted(s, { ff: el.ff.value, tas: el.tas.value, magVar: el.magVar.value });
+  if (s) savePersisted(s, { ff: el.ff.value, tas: el.tas.value, magVar: signedMagVar() });
 }
 
 // --- startup --------------------------------------------------------------
+function setMagSeg() {
+  setSeg($('mv-w'), magW);
+  setSeg($('mv-e'), !magW);
+}
 const saved = (() => { const s = storage(); return s ? loadPersisted(s) : { ff: '17.8', tas: '', magVar: '' }; })();
 el.ff.value = saved.ff;
 el.tas.value = saved.tas;
-el.magVar.value = saved.magVar;
+{
+  // Stored as a signed string: '-22' = 22 W, '22' = 22 E, '' = default W.
+  const mv = String(saved.magVar ?? '').trim();
+  magW = !(mv !== '' && !mv.startsWith('-'));
+  el.magVar.value = mv.replace(/^[+-]/, '');
+  setMagSeg();
+}
 
 [el.fob, el.ff, el.dist, el.gs, el.tas, el.garmin, el.course, el.magVar].forEach((inp) => {
   inp.addEventListener('input', () => {
@@ -168,10 +204,13 @@ el.magVar.value = saved.magVar;
     render();
   });
 });
+[['mv-w', true], ['mv-e', false]].forEach(([id, w]) => {
+  $(id).addEventListener('click', () => { magW = w; setMagSeg(); persist(); render(); });
+});
 el.points.addEventListener('input', onPointsInput);
 el.points.addEventListener('click', onPointsClick);
 el.add.addEventListener('click', () => {
-  points.push({ dist: '', comp: '', windDir: '', windSpeed: '' });
+  points.push({ dist: '', comp: '', tw: false, windDir: '', windSpeed: '' });
   rebuildPoints();
   render();
   const rows = el.points.querySelectorAll('.wp');
@@ -204,7 +243,8 @@ function onGpsFix(pos) {
   gpsDenied = false;
   const kt = gpsSpeedToKt(pos?.coords?.speed);
   if (gpsState === 'off') setGps('gps'); // recovered after an earlier error
-  if (kt == null || gpsState !== 'gps') return;
+  // Stationary / sub-1-kt fixes are not written: keep whatever the pilot typed.
+  if (kt == null || kt < 1 || gpsState !== 'gps') return;
   el.gs.value = String(kt);
   render();
 }

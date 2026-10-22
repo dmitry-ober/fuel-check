@@ -1,6 +1,6 @@
 // Cache-first service worker. All paths are relative (app is served from a subpath).
 // IMPORTANT: bump CACHE on every deploy, otherwise clients keep serving stale files.
-const CACHE = 'fuel-check-v1';
+const CACHE = 'fuel-check-v2';
 const ASSETS = [
   '.',
   'index.html',
@@ -15,7 +15,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {

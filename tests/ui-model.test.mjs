@@ -14,6 +14,26 @@ test('num', () => {
   assert.equal(num('17.8'), 17.8);
   assert.equal(num('-45'), -45);
   assert.equal(num('abc'), null);
+  assert.equal(num('52,5'), 52.5);
+  assert.equal(num('17,8'), 17.8);
+  assert.equal(num(',5'), 0.5);
+});
+
+test('zero / negative inputs are incomplete, never ok', () => {
+  for (const over of [{ ff: 0 }, { ff: -17.8 }, { gs: 0 }, { tas: 0 }, { dist: 0 }, { dist: -50 }]) {
+    const vm = buildViewModel(quick(over));
+    assert.equal(vm.status, 'incomplete', JSON.stringify(over));
+    assert.ok(vm.missing.includes(Object.keys(over)[0]));
+    assert.equal(vm.fodText, undefined);
+  }
+});
+
+test('precise with zero points does not require course', () => {
+  const vm = buildViewModel(quick({ mode: 'precise', points: [] }));
+  assert.equal(vm.status, 'ok');
+  const vm2 = buildViewModel(quick({ mode: 'precise', points: [{ dist: 50, windDir: 90, windSpeed: 10 }] }));
+  assert.equal(vm2.status, 'incomplete');
+  assert.ok(vm2.missing.includes('courseMag'));
 });
 
 test('gpsSpeedToKt', () => {
@@ -21,6 +41,7 @@ test('gpsSpeedToKt', () => {
   assert.equal(gpsSpeedToKt(-1), null);
   assert.equal(gpsSpeedToKt(NaN), null);
   assert.equal(gpsSpeedToKt(76.1), 148);
+  assert.equal(gpsSpeedToKt(0), 0); // the >=1 kt floor lives in app.mjs
 });
 
 test('formatEte', () => {

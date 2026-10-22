@@ -54,3 +54,7 @@ body:not(.precise) .precise-only,body.precise .quick-only,[hidden]{display:none!
 .result.idle{background:var(--panel);border-color:var(--border)}
 .result.idle .big{color:var(--muted)}
 .wp.err{border-color:var(--red)}
+.seg{display:flex;flex:0 0 auto;gap:2px;background:var(--panel);border-radius:8px;padding:2px;margin-left:6px}
+.segbtn{min-width:44px;min-height:44px;font:inherit;font-size:12px;font-weight:700;border:0;border-radius:6px;color:var(--muted);background:transparent;cursor:pointer}
+.segbtn.on{background:var(--tab-on);color:var(--green)}
+.field .seg{background:var(--bg)}

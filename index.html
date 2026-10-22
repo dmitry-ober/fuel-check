@@ -46,7 +46,8 @@
     <label class="field"><span class="lab">Course (track)</span>
       <span class="valwrap"><input id="course" type="text" inputmode="numeric" autocomplete="off"><span class="unit">°</span></span></label>
     <label class="field"><span class="lab">Mag var</span>
-      <span class="valwrap"><input id="mag-var" type="text" inputmode="decimal" autocomplete="off" placeholder="E+ / W−"><span class="unit">°</span></span></label>
+      <span class="valwrap"><input id="mag-var" type="text" inputmode="decimal" autocomplete="off"><span class="unit">°</span>
+        <span class="seg" role="group" aria-label="Variation direction"><button type="button" id="mv-w" class="segbtn on" aria-pressed="true">W</button><button type="button" id="mv-e" class="segbtn" aria-pressed="false">E</button></span></span></label>
   </div>
 
   <div class="youline"><span class="dot"></span><span class="txt" id="you-line">YOU · 0 NM</span><span class="cur">current wind in your GS</span></div>
@@ -72,6 +73,7 @@
       <span class="inputbox"><input type="text" inputmode="decimal" autocomplete="off" data-field="dist"><span class="unit">nm</span></span></label>
     <label class="cell quick-only"><span class="lab">Wind from here</span>
       <span class="inputbox"><input type="text" inputmode="decimal" autocomplete="off" data-field="comp"><span class="unit">kt</span></span></label>
+    <div class="seg quick-only" role="group" aria-label="Wind direction"><button type="button" class="segbtn on" data-wind="hw" aria-pressed="true">HW</button><button type="button" class="segbtn" data-wind="tw" aria-pressed="false">TW</button></div>
     <label class="cell precise-only"><span class="lab">Wind dir</span>
       <span class="inputbox"><input type="text" inputmode="numeric" autocomplete="off" data-field="windDir"><span class="unit">°</span></span></label>
     <label class="cell precise-only"><span class="lab">Wind spd</span>
