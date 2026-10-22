@@ -47,3 +47,6 @@ body:not(.precise) .precise-only,body.precise .quick-only,[hidden]{display:none!
 .result.bad{background:#2a1214;border-color:#7a2e34}
 .result.bad .big{color:var(--red)}
 .foot{margin-top:14px;text-align:center;font-size:11px;color:var(--muted)}
+.result.idle{background:var(--panel);border-color:var(--border)}
+.result.idle .big{color:var(--muted)}
+.wp.err{border-color:var(--red)}
