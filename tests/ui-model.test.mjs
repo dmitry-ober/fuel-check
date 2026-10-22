@@ -117,3 +117,57 @@ test('buildViewModel returns etaText when now is provided, null otherwise', () =
   assert.equal(withNow.etaText, '16:06Z'); // 14:00Z + 312/148 h = 16:06:29Z → 16:06Z
   assert.equal(buildViewModel(base).etaText, null);
 });
+
+const ARR_BASE = { fob: 52, ff: 17.8, dist: 312, gs: 148, tas: 183, garminFod: null, mode: 'quick', courseMag: null, magVar: null, points: [] };
+const ARRIVAL = { cruiseAlt: 11000, fieldElev: 151, rate: 500, descFF: 18, apprFF: 20, apprMin: 10 };
+
+test('arrival: three-phase model (cruise + descent + approach)', () => {
+  const vm = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL } });
+  assert.equal(vm.status, 'ok');
+  // descent: 10849 ft / 500 fpm = 21.698 min = 0.36163 h; descDist = 53.52 nm
+  // cruise: 258.48 nm / 148 = 1.74650 h; appr: 10 min
+  // ete = 2.27480 h -> 136.5 min -> 2:16 (rounded)
+  assert.equal(vm.eteText, '2:16');
+  // fuel = 1.74650*17.8 + 0.36163*18 + (10/60)*20 = 40.93 -> fod 11.1, below 13.35 reserve
+  assert.equal(vm.fodText, '11.1 gal');
+  assert.equal(vm.belowReserve, true);
+  assert.equal(vm.todText, 'TOD in 258 nm');
+  assert.match(vm.breakdownText, /^Cruise 1:45 · Desc 0:22 · Appr 0:10$/);
+});
+
+test('arrival: already inside descent distance', () => {
+  const vm = buildViewModel({ ...ARR_BASE, fob: 20, dist: 40, arrival: { ...ARRIVAL } });
+  assert.equal(vm.status, 'ok');
+  // descent covers all 40 nm: 40/148 = 0.27027 h; + 10 min appr
+  assert.equal(vm.eteText, '0:26');
+  assert.equal(vm.todText, 'Descending now');
+  // fuel = 0.27027*18 + 0.16667*20 = 8.20 -> fod 11.8
+  assert.equal(vm.fodText, '11.8 gal');
+});
+
+test('arrival: validation of altitudes and rates', () => {
+  let vm = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, cruiseAlt: 100, fieldElev: 5000 } });
+  assert.equal(vm.status, 'incomplete');
+  assert.ok(vm.missing.includes('cruiseAlt'));
+  vm = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, rate: 0 } });
+  assert.equal(vm.status, 'incomplete');
+  assert.ok(vm.missing.includes('rate'));
+  vm = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, cruiseAlt: null } });
+  assert.equal(vm.status, 'incomplete');
+  vm = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, apprMin: -5 } });
+  assert.equal(vm.status, 'incomplete');
+});
+
+test('arrival: apprMin empty counts as 0', () => {
+  const a = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, apprMin: null } });
+  const b = buildViewModel({ ...ARR_BASE, arrival: { ...ARRIVAL, apprMin: 0 } });
+  assert.equal(a.status, 'ok');
+  assert.equal(a.fodText, b.fodText);
+});
+
+test('no arrival: todText/breakdownText null and totals unchanged', () => {
+  const vm = buildViewModel({ ...ARR_BASE });
+  assert.equal(vm.todText, null);
+  assert.equal(vm.breakdownText, null);
+  assert.equal(vm.fodText, '14.5 gal'); // 312/148*17.8 = 37.52 -> 52-37.5
+});

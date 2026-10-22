@@ -221,3 +221,19 @@ numbering and semantics — this version supersedes the segment design in v1).
   points, Garmin FOD and Course are cleared every launch.
 - Precise mode gets a Mag var field (owner is not sure his panel's track
   and wind references match).
+
+## Addendum 2026-10-22: Arrival block (owner-requested, approved in chat)
+
+Toggleable ARRIVAL section for a more precise FOD. Three-phase model:
+cruise (wind segments, cruise FF) until top of descent; descent (time =
+(cruise alt − field elev) / rate, at its own FF); approach/procedure
+allowance (minutes at full-rich FF). Descent distance = descent time ×
+last wind segment's GS; if the remaining distance is shorter, the cruise
+phase is zero and descent covers what is left. Defaults (editable):
+rate 500 fpm, descent FF 18 gph, approach FF 20 gph — persisted as
+aircraft settings; altitudes and approach minutes are flight data (never
+persisted). Approach-time quick buttons +5/+10/+15/0. Procedure library:
+owner-maintained entries {airport, name, minutes} stored on the device
+(fc.procs), selectable to fill approach time; seeded from the owner's
+charts when provided (FALA, FACT, FAOR). Result panel adds a line:
+"TOD in N nm · Cruise h:mm · Desc h:mm · Appr h:mm".

@@ -45,7 +45,7 @@ function windPhrase(comp) {
 }
 
 export function buildViewModel(state) {
-  const { fob, ff, dist, gs, tas, garminFod, mode, courseMag, magVar, points, now } = state;
+  const { fob, ff, dist, gs, tas, garminFod, mode, courseMag, magVar, points, now, arrival } = state;
   const precise = mode === 'precise';
 
   const missing = [];
@@ -55,6 +55,15 @@ export function buildViewModel(state) {
     if (v == null || !(v > 0)) missing.push(k);
   }
   if (precise && points.length > 0 && courseMag == null) missing.push('courseMag');
+  if (arrival) {
+    for (const [k, v] of [['rate', arrival.rate], ['descFF', arrival.descFF], ['apprFF', arrival.apprFF]]) {
+      if (v == null || !(v > 0)) missing.push(k);
+    }
+    if (arrival.cruiseAlt == null) missing.push('cruiseAlt');
+    if (arrival.fieldElev == null || arrival.fieldElev < 0) missing.push('fieldElev');
+    if (arrival.cruiseAlt != null && arrival.fieldElev != null && arrival.cruiseAlt <= arrival.fieldElev) missing.push('cruiseAlt');
+    if (arrival.apprMin != null && arrival.apprMin < 0) missing.push('apprMin');
+  }
   if (missing.length) return { status: 'incomplete', missing };
 
   const pointErrors = [];
@@ -94,7 +103,41 @@ export function buildViewModel(state) {
   const built = buildSegments(dist, gs, segPoints);
   if (built.errors.length) return { status: 'error', pointErrors: built.errors };
 
-  const f = computeFuel(built.segments, ff, fob);
+  // Three-phase arrival model: cruise (wind segments, cruise FF) until the
+  // top of descent, then descent by time at its own FF, then the approach /
+  // procedure allowance in minutes at full-rich FF. Descent distance is
+  // derived from the descent time and the LAST wind segment's ground speed
+  // (descent happens closest to the destination).
+  let f, arr = null;
+  if (arrival) {
+    const segs = built.segments;
+    const apprH = (arrival.apprMin ?? 0) / 60;
+    const gsDesc = segs[segs.length - 1].gs;
+    const fullDescH = (arrival.cruiseAlt - arrival.fieldElev) / (arrival.rate * 60);
+    const descDist = fullDescH * gsDesc;
+    const cruisePart = dist - descDist;
+    let cruiseH = 0, descH;
+    if (cruisePart <= 0) {
+      descH = dist / gsDesc; // already inside the descent: no cruise phase left
+    } else {
+      descH = fullDescH;
+      for (const s of segs) {
+        const len = Math.min(s.to, cruisePart) - s.from;
+        if (len > 0) cruiseH += len / s.gs;
+      }
+    }
+    const eteHours = cruiseH + descH + apprH;
+    const fuelUsed = cruiseH * ff + descH * arrival.descFF + apprH * arrival.apprFF;
+    const fod = fob - fuelUsed;
+    const reserveGal = ff * 0.75;
+    f = { eteHours, fuelUsed, fod, reserveGal, reserveMin: (fod / ff) * 60, belowReserve: fod < reserveGal };
+    arr = {
+      todText: cruisePart > 0 ? `TOD in ${Math.round(cruisePart)} nm` : 'Descending now',
+      breakdownText: `Cruise ${formatEte(cruiseH)} · Desc ${formatEte(descH)} · Appr ${formatEte(apprH)}`,
+    };
+  } else {
+    f = computeFuel(built.segments, ff, fob);
+  }
   const explainers = built.segments.map((s, i) => {
     const range = `↓ ${Math.round(s.from)}–${Math.round(s.to)} nm: `;
     if (i === 0) return `${range}current GS ${Math.round(s.gs)} kt`;
@@ -120,5 +163,7 @@ export function buildViewModel(state) {
     deltaText,
     explainers,
     pointComps,
+    todText: arr ? arr.todText : null,
+    breakdownText: arr ? arr.breakdownText : null,
   };
 }

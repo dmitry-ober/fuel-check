@@ -1,6 +1,6 @@
 // Thin DOM glue. All logic lives in ui-model.mjs / calc.mjs.
 import { buildViewModel, num, gpsSpeedToKt, formatUtcHM } from './ui-model.mjs';
-import { loadPersisted, savePersisted } from './storage.mjs';
+import { loadPersisted, savePersisted, loadProcs, saveProcs } from './storage.mjs';
 import { declination, toDecimalYear } from './wmm.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -11,7 +11,14 @@ const el = {
   points: $('points'), add: $('add-point'), you: $('you-line'),
   result: $('result'), big: $('fod-big'), sub: $('result-sub'), warn: $('result-warning'),
   tpl: $('point-template'), badge: $('gps-badge'),
+  arrToggle: $('arr-toggle'), arrState: $('arr-state'), arrBody: $('arr-body'), arrSub: $('arr-sub'),
+  crAlt: $('cr-alt'), fldElev: $('fld-elev'), descRate: $('desc-rate'),
+  descFF: $('desc-ff'), apprFF: $('appr-ff'), apprMin: $('appr-min'),
+  procSel: $('proc-sel'), procForm: $('proc-form'),
+  pfApt: $('pf-apt'), pfName: $('pf-name'), pfMin: $('pf-min'),
 };
+
+let arrivalOn = false;
 
 // Single source of truth for wind points. Each point keeps BOTH the quick
 // value (comp) and the precise values (windDir/windSpeed), sharing dist,
@@ -46,7 +53,10 @@ const signedComp = (p) => {
   const v = num(p.comp);
   return v == null ? null : (p.tw ? 1 : -1) * Math.abs(v); // HW = negative comp
 };
-const FIELD_NAME = { fob: 'fuel on board', ff: 'fuel flow', dist: 'distance', gs: 'ground speed', tas: 'TAS', courseMag: 'course' };
+const FIELD_NAME = {
+  fob: 'fuel on board', ff: 'fuel flow', dist: 'distance', gs: 'ground speed', tas: 'TAS', courseMag: 'course',
+  cruiseAlt: 'cruise alt', fieldElev: 'field elev', rate: 'descent rate', descFF: 'descent FF', apprFF: 'approach FF', apprMin: 'approach time',
+};
 
 const ERR_TEXT = {
   OUT_OF_ORDER: 'Distances must increase',
@@ -69,6 +79,10 @@ function readState() {
       dist: num(p.dist), comp: signedComp(p), windDir: num(p.windDir), windSpeed: num(p.windSpeed),
     })),
     now: new Date(),
+    arrival: arrivalOn ? {
+      cruiseAlt: num(el.crAlt.value), fieldElev: num(el.fldElev.value), rate: num(el.descRate.value),
+      descFF: num(el.descFF.value), apprFF: num(el.apprFF.value), apprMin: num(el.apprMin.value),
+    } : null,
   };
 }
 
@@ -127,6 +141,7 @@ function setNeutral(sub) {
   el.result.classList.add('idle');
   el.big.textContent = '—';
   el.sub.textContent = sub;
+  el.arrSub.textContent = '';
   el.warn.hidden = true;
   el.warn.textContent = '';
 }
@@ -169,6 +184,7 @@ function render() {
   if (vm.etaText) parts.push(`ETA ${vm.etaText}`);
   if (vm.deltaText) parts.push(vm.deltaText);
   el.sub.textContent = parts.join(' · ');
+  el.arrSub.textContent = vm.todText ? `${vm.todText} · ${vm.breakdownText}` : '';
   if (vm.belowReserve) {
     el.warn.textContent = `⚠ Below 45-min reserve (${vm.reserveGalText})`;
     el.warn.hidden = false;
@@ -198,7 +214,10 @@ function setMode(next) {
 
 function persist() {
   const s = storage();
-  if (s) savePersisted(s, { ff: el.ff.value, tas: el.tas.value, magVar: signedMagVar() });
+  if (s) savePersisted(s, {
+    ff: el.ff.value, tas: el.tas.value, magVar: signedMagVar(),
+    descRate: el.descRate.value, descFF: el.descFF.value, apprFF: el.apprFF.value,
+  });
 }
 
 // --- startup --------------------------------------------------------------
@@ -209,6 +228,9 @@ function setMagSeg() {
 const saved = (() => { const s = storage(); return s ? loadPersisted(s) : { ff: '17.8', tas: '', magVar: '' }; })();
 el.ff.value = saved.ff;
 el.tas.value = saved.tas;
+el.descRate.value = saved.descRate;
+el.descFF.value = saved.descFF;
+el.apprFF.value = saved.apprFF;
 {
   // Stored as a signed string: '-22' = 22 W, '22' = 22 E, '' = default W.
   const mv = String(saved.magVar ?? '').trim();
@@ -218,10 +240,12 @@ el.tas.value = saved.tas;
   if (mv !== '') setMagSrc('saved');
 }
 
-[el.fob, el.ff, el.dist, el.gs, el.tas, el.garmin, el.course, el.magVar].forEach((inp) => {
+[el.fob, el.ff, el.dist, el.gs, el.tas, el.garmin, el.course, el.magVar,
+  el.crAlt, el.fldElev, el.descRate, el.descFF, el.apprFF, el.apprMin].forEach((inp) => {
   inp.addEventListener('input', () => {
     if (inp === el.magVar) setMagSrc('manual');
-    if (inp === el.ff || inp === el.tas || inp === el.magVar) persist();
+    if (inp === el.ff || inp === el.tas || inp === el.magVar
+      || inp === el.descRate || inp === el.descFF || inp === el.apprFF) persist();
     render();
   });
 });
@@ -314,6 +338,72 @@ try {
 rebuildPoints();
 setMode('quick');
 
+// --- arrival block ---------------------------------------------------------
+el.arrToggle.addEventListener('click', () => {
+  arrivalOn = !arrivalOn;
+  el.arrBody.hidden = !arrivalOn;
+  el.arrToggle.setAttribute('aria-expanded', String(arrivalOn));
+  el.arrState.textContent = arrivalOn ? 'ON' : 'OFF';
+  el.arrState.classList.toggle('on', arrivalOn);
+  render();
+});
+document.querySelectorAll('[data-addmin]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const add = Number(btn.dataset.addmin);
+    const cur = num(el.apprMin.value) ?? 0;
+    el.apprMin.value = String(add === 0 ? 0 : Math.max(0, cur + add));
+    render();
+  });
+});
+
+// Procedure library: owner-maintained, persisted on the device.
+let procs = loadProcs(storage());
+function renderProcSel() {
+  const keep = el.procSel.value;
+  el.procSel.innerHTML = '<option value="">Saved procedures…</option>';
+  procs
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => a.p.apt.localeCompare(b.p.apt) || a.p.name.localeCompare(b.p.name))
+    .forEach(({ p, i }) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = `${p.apt} — ${p.name} (+${p.min} min)`;
+      el.procSel.appendChild(o);
+    });
+  if ([...el.procSel.options].some((o) => o.value === keep)) el.procSel.value = keep;
+}
+renderProcSel();
+$('proc-use').addEventListener('click', () => {
+  const p = procs[Number(el.procSel.value)];
+  if (!p) return;
+  el.apprMin.value = String(p.min);
+  render();
+});
+$('proc-del').addEventListener('click', () => {
+  const i = Number(el.procSel.value);
+  if (!procs[i]) return;
+  procs.splice(i, 1);
+  saveProcs(storage(), procs);
+  renderProcSel();
+});
+$('proc-add').addEventListener('click', () => {
+  el.procForm.hidden = false;
+  el.pfApt.focus();
+});
+$('pf-cancel').addEventListener('click', () => { el.procForm.hidden = true; });
+$('pf-save').addEventListener('click', () => {
+  const apt = el.pfApt.value.trim().toUpperCase();
+  const name = el.pfName.value.trim();
+  const min = num(el.pfMin.value);
+  if (!apt || !name || min == null || min < 0) return;
+  procs.push({ apt, name, min, note: '' });
+  saveProcs(storage(), procs);
+  renderProcSel();
+  el.procSel.value = String(procs.length - 1);
+  el.procForm.hidden = true;
+  el.pfApt.value = ''; el.pfName.value = ''; el.pfMin.value = '';
+});
+
 // UTC clock in the header; the ETA line refreshes with it once a minute.
 {
   const clock = $('utc-clock');
@@ -328,7 +418,7 @@ setMode('quick');
 }
 
 // Offline support: registration failure must never break the app.
-const APP_VERSION = 'v5';
+const APP_VERSION = 'v6';
 try {
   const verEl = document.getElementById('app-version');
   if (verEl) verEl.textContent = APP_VERSION;

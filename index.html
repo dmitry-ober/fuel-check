@@ -56,10 +56,58 @@
 
   <button type="button" id="add-point" class="addbtn">+ Add wind point</button>
 
+  <section class="arrival">
+    <button type="button" id="arr-toggle" class="arrhead" aria-expanded="false">
+      <span class="lab">ARRIVAL — TOD &amp; approach</span><span class="arrstate" id="arr-state">OFF</span>
+    </button>
+    <div id="arr-body" hidden>
+      <div class="row">
+        <label class="field"><span class="lab">Cruise alt</span>
+          <span class="valwrap"><input id="cr-alt" type="text" inputmode="numeric" autocomplete="off"><span class="unit">ft</span></span></label>
+        <label class="field"><span class="lab">Field elev</span>
+          <span class="valwrap"><input id="fld-elev" type="text" inputmode="numeric" autocomplete="off"><span class="unit">ft</span></span></label>
+        <label class="field"><span class="lab">Descent</span>
+          <span class="valwrap"><input id="desc-rate" type="text" inputmode="numeric" autocomplete="off"><span class="unit">fpm</span></span></label>
+      </div>
+      <div class="row">
+        <label class="field"><span class="lab">Descent FF</span>
+          <span class="valwrap"><input id="desc-ff" type="text" inputmode="decimal" autocomplete="off"><span class="unit">gph</span></span></label>
+        <label class="field"><span class="lab">Approach FF</span>
+          <span class="valwrap"><input id="appr-ff" type="text" inputmode="decimal" autocomplete="off"><span class="unit">gph</span></span></label>
+      </div>
+      <div class="row">
+        <label class="field"><span class="lab">Approach / procedure time</span>
+          <span class="valwrap"><input id="appr-min" type="text" inputmode="numeric" autocomplete="off"><span class="unit">min</span>
+            <span class="seg" role="group" aria-label="Quick add minutes"><button type="button" class="segbtn" data-addmin="5">+5</button><button type="button" class="segbtn" data-addmin="10">+10</button><button type="button" class="segbtn" data-addmin="15">+15</button><button type="button" class="segbtn" data-addmin="0" aria-label="Reset to zero">0</button></span></span></label>
+      </div>
+      <div class="procrow">
+        <select id="proc-sel" aria-label="Saved arrival procedures"><option value="">Saved procedures…</option></select>
+        <button type="button" id="proc-use" class="segbtn">Use</button>
+        <button type="button" id="proc-del" class="segbtn" aria-label="Delete selected procedure">×</button>
+        <button type="button" id="proc-add" class="segbtn">+ New</button>
+      </div>
+      <div id="proc-form" class="procform" hidden>
+        <div class="row">
+          <label class="field"><span class="lab">Airport</span>
+            <span class="valwrap"><input id="pf-apt" type="text" autocomplete="off" placeholder="FACT" maxlength="4"></span></label>
+          <label class="field"><span class="lab">Procedure</span>
+            <span class="valwrap"><input id="pf-name" type="text" autocomplete="off" placeholder="ILS 01 vectors S"></span></label>
+          <label class="field"><span class="lab">Time</span>
+            <span class="valwrap"><input id="pf-min" type="text" inputmode="numeric" autocomplete="off"><span class="unit">min</span></span></label>
+        </div>
+        <div class="procrow">
+          <button type="button" id="pf-save" class="segbtn">Save</button>
+          <button type="button" id="pf-cancel" class="segbtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="result" class="result" aria-live="polite">
     <div class="cap">Fuel at destination</div>
     <div class="big" id="fod-big">—</div>
     <div class="sub" id="result-sub"></div>
+    <div class="sub" id="arr-sub"></div>
     <div class="warn" id="result-warning" hidden></div>
   </section>
 

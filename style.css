@@ -56,6 +56,14 @@ body:not(.precise) .precise-only,body.precise .quick-only,[hidden]{display:none!
 .src-badge.auto{color:var(--green);border-color:var(--green)}
 .src-badge:empty{display:none}
 #utc-clock{float:right;font-size:12px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.arrival{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px 10px 10px}
+.arrhead{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;background:none;border:none;color:var(--text);cursor:pointer;padding:0}
+.arrstate{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted)}
+.arrstate.on{color:var(--green)}
+.arrival .row{margin-top:8px}
+.procrow{display:flex;gap:8px;margin-top:10px;align-items:stretch}
+.procrow select{flex:1;min-height:44px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:0 8px}
+.procform{border-top:1px solid var(--border);margin-top:10px;padding-top:2px}
 #app-version{font-variant-numeric:tabular-nums}
 #update-btn{min-height:44px;padding:0 16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
 #update-btn:disabled{color:var(--muted)}
