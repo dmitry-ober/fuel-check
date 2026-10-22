@@ -39,3 +39,25 @@ export function computeFuel(segments, ff, fob) {
   const belowReserve = fod < reserveGal;
   return { eteHours, fuelUsed, fod, reserveGal, reserveMin, belowReserve };
 }
+
+// Wind components relative to the true course. Angles in degrees; Math trig
+// takes radians. head > 0 is a headwind; cross is the signed crosswind component.
+export function headCross(windDirTrue, windSpeed, courseTrue) {
+  const rad = ((windDirTrue - courseTrue) * Math.PI) / 180;
+  return {
+    head: windSpeed * Math.cos(rad),
+    cross: windSpeed * Math.sin(rad),
+  };
+}
+
+// Magnetic course to true course. magVar is signed, positive = East.
+export function trueCourse(courseMag, magVar) {
+  return (courseMag + magVar + 360) % 360;
+}
+
+// Groundspeed from the wind triangle. Returns null when the crosswind is at or
+// beyond TAS (no valid solution).
+export function gsFromWind(tas, head, cross) {
+  if (Math.abs(cross) >= tas) return null;
+  return Math.sqrt(tas * tas - cross * cross) - head;
+}
