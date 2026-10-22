@@ -101,3 +101,19 @@ test('below reserve', () => {
   assert.equal(vm.status, 'ok');
   assert.equal(vm.belowReserve, true);
 });
+
+test('formatUtcHM and etaUtc', async () => {
+  const { formatUtcHM, etaUtc } = await import('../ui-model.mjs');
+  const now = new Date(Date.UTC(2026, 9, 22, 14, 32, 10));
+  assert.equal(formatUtcHM(now), '14:32');
+  assert.equal(etaUtc(2.028, now), '16:34Z');       // +2:02 → 16:34Z (121.68 min)
+  assert.equal(etaUtc(10, now), '00:32Z');          // wraps past midnight
+});
+
+test('buildViewModel returns etaText when now is provided, null otherwise', () => {
+  const base = { fob: 52, ff: 17.8, dist: 312, gs: 148, tas: 183, garminFod: null, mode: 'quick', courseMag: null, magVar: null, points: [] };
+  const withNow = buildViewModel({ ...base, now: new Date(Date.UTC(2026, 9, 22, 14, 0, 0)) });
+  assert.equal(withNow.status, 'ok');
+  assert.equal(withNow.etaText, '16:06Z'); // 14:00Z + 312/148 h = 16:06:29Z → 16:06Z
+  assert.equal(buildViewModel(base).etaText, null);
+});

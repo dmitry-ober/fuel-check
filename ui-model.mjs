@@ -21,6 +21,18 @@ export function formatEte(hours) {
   return `${h}:${String(m).padStart(2, '0')}`;
 }
 
+// "14:32" from a Date, in UTC.
+export function formatUtcHM(date) {
+  return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+// ETA in UTC ("16:34Z"): now + ETE, rounded to the nearest minute so it
+// stays consistent with the rounded ETE. Pure; `now` is injected for tests.
+export function etaUtc(eteHours, now) {
+  const t = Math.round((now.getTime() + eteHours * 3600000) / 60000) * 60000;
+  return `${formatUtcHM(new Date(t))}Z`;
+}
+
 const MINUS = '−';
 const fmt1 = (x) => x.toFixed(1);
 
@@ -33,7 +45,7 @@ function windPhrase(comp) {
 }
 
 export function buildViewModel(state) {
-  const { fob, ff, dist, gs, tas, garminFod, mode, courseMag, magVar, points } = state;
+  const { fob, ff, dist, gs, tas, garminFod, mode, courseMag, magVar, points, now } = state;
   const precise = mode === 'precise';
 
   const missing = [];
@@ -102,6 +114,7 @@ export function buildViewModel(state) {
     fodText: `${fmt1(f.fod)} gal`,
     reserveMinText: `${Math.round(f.reserveMin)} min`,
     eteText: formatEte(f.eteHours),
+    etaText: now ? etaUtc(f.eteHours, now) : null,
     belowReserve: f.belowReserve,
     reserveGalText: `${fmt1(f.reserveGal)} gal`,
     deltaText,

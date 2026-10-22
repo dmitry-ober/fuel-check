@@ -1,5 +1,5 @@
 // Thin DOM glue. All logic lives in ui-model.mjs / calc.mjs.
-import { buildViewModel, num, gpsSpeedToKt } from './ui-model.mjs';
+import { buildViewModel, num, gpsSpeedToKt, formatUtcHM } from './ui-model.mjs';
 import { loadPersisted, savePersisted } from './storage.mjs';
 import { declination, toDecimalYear } from './wmm.mjs';
 
@@ -68,6 +68,7 @@ function readState() {
     points: points.map((p) => ({
       dist: num(p.dist), comp: signedComp(p), windDir: num(p.windDir), windSpeed: num(p.windSpeed),
     })),
+    now: new Date(),
   };
 }
 
@@ -165,6 +166,7 @@ function render() {
   el.result.classList.toggle('bad', vm.belowReserve);
   el.big.textContent = vm.fodText;
   const parts = [`≈ ${vm.reserveMinText} reserve`, `ETE ${vm.eteText}`];
+  if (vm.etaText) parts.push(`ETA ${vm.etaText}`);
   if (vm.deltaText) parts.push(vm.deltaText);
   el.sub.textContent = parts.join(' · ');
   if (vm.belowReserve) {
@@ -312,8 +314,21 @@ try {
 rebuildPoints();
 setMode('quick');
 
+// UTC clock in the header; the ETA line refreshes with it once a minute.
+{
+  const clock = $('utc-clock');
+  let lastMinute = -1;
+  const tick = () => {
+    const d = new Date();
+    if (clock) clock.textContent = `${formatUtcHM(d)}:${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+    if (d.getUTCMinutes() !== lastMinute) { lastMinute = d.getUTCMinutes(); render(); }
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
 // Offline support: registration failure must never break the app.
-const APP_VERSION = 'v4';
+const APP_VERSION = 'v5';
 try {
   const verEl = document.getElementById('app-version');
   if (verEl) verEl.textContent = APP_VERSION;

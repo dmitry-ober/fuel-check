@@ -55,6 +55,7 @@ body:not(.precise) .precise-only,body.precise .quick-only,[hidden]{display:none!
 .src-badge{font-size:8.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 4px;vertical-align:1px}
 .src-badge.auto{color:var(--green);border-color:var(--green)}
 .src-badge:empty{display:none}
+#utc-clock{float:right;font-size:12px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:.04em}
 #app-version{font-variant-numeric:tabular-nums}
 #update-btn{min-height:44px;padding:0 16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
 #update-btn:disabled{color:var(--muted)}
