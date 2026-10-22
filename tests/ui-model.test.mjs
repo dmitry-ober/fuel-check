@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { num, gpsSpeedToKt, formatEte, buildViewModel } from '../ui-model.mjs';
+
+const quick = (over = {}) => ({
+  fob: 52, ff: 17.8, dist: 312, gs: 148, tas: 183, garminFod: null,
+  mode: 'quick', courseMag: null, magVar: null,
+  points: [{ dist: 50, comp: -45 }, { dist: 170, comp: -20 }, { dist: 250, comp: 5 }],
+  ...over,
+});
+
+test('num', () => {
+  assert.equal(num(''), null);
+  assert.equal(num('17.8'), 17.8);
+  assert.equal(num('-45'), -45);
+  assert.equal(num('abc'), null);
+});
+
+test('gpsSpeedToKt', () => {
+  assert.equal(gpsSpeedToKt(null), null);
+  assert.equal(gpsSpeedToKt(-1), null);
+  assert.equal(gpsSpeedToKt(NaN), null);
+  assert.equal(gpsSpeedToKt(76.1), 148);
+});
+
+test('formatEte', () => {
+  assert.equal(formatEte(2.028), '2:02');
+  assert.equal(formatEte(0.983), '0:59');
+});
+
+test('quick mode ok', () => {
+  const vm = buildViewModel(quick());
+  assert.equal(vm.status, 'ok');
+  assert.equal(vm.fodText, '15.9 gal');
+  assert.equal(vm.eteText, '2:02');
+  assert.equal(vm.belowReserve, false);
+  assert.equal(vm.explainers.length, 4);
+  assert.equal(vm.explainers[0], '↓ 0–50 nm: current GS 148 kt');
+  assert.equal(vm.explainers[1], '↓ 50–170 nm: headwind 45 kt → GS 138 kt');
+  assert.equal(vm.deltaText, null);
+});
+
+test('garmin delta', () => {
+  const vm = buildViewModel(quick({ garminFod: 18.2 }));
+  assert.equal(vm.deltaText, 'Garmin 18.2 gal · Δ −2.3 gal');
+});
+
+test('incomplete', () => {
+  const vm = buildViewModel(quick({ fob: null }));
+  assert.equal(vm.status, 'incomplete');
+  assert.ok(vm.missing.includes('fob'));
+});
+
+test('incomplete point', () => {
+  const vm = buildViewModel(quick({ points: [{ dist: 50, comp: null }] }));
+  assert.equal(vm.status, 'error');
+  assert.deepEqual(vm.pointErrors, [{ index: 0, code: 'INCOMPLETE' }]);
+});
+
+const precise = (over = {}) => ({
+  ...quick(), mode: 'precise', courseMag: 265, magVar: 0,
+  points: [{ dist: 50, windDir: 270, windSpeed: 45 }], ...over,
+});
+
+test('precise mode', () => {
+  const vm = buildViewModel(precise());
+  assert.equal(vm.status, 'ok');
+  assert.equal(vm.pointComps[0], -45);
+  assert.match(vm.explainers[1], /138 kt/);
+});
+
+test('crosswind > TAS', () => {
+  const vm = buildViewModel(precise({ points: [{ dist: 50, windDir: 175, windSpeed: 200 }] }));
+  assert.equal(vm.status, 'error');
+  assert.equal(vm.pointErrors[0].code, 'CROSSWIND_GT_TAS');
+});
+
+test('below reserve', () => {
+  const vm = buildViewModel(quick({ fob: 38, points: [{ dist: 50, comp: -100 }] }));
+  assert.equal(vm.status, 'ok');
+  assert.equal(vm.belowReserve, true);
+});
