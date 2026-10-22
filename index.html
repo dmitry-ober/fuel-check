@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FUEL CHECK — SR22T</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+  <h1 class="ph-title">FUEL CHECK — SR22T</h1>
+
+  <div class="row">
+    <label class="field"><span class="lab">Fuel on board</span>
+      <span class="valwrap"><input id="fob" type="text" inputmode="decimal" autocomplete="off"><span class="unit">gal</span></span></label>
+    <label class="field"><span class="lab">Fuel flow</span>
+      <span class="valwrap"><input id="ff" type="text" inputmode="decimal" autocomplete="off"><span class="unit">gph</span></span></label>
+  </div>
+
+  <div class="row">
+    <label class="field"><span class="lab">Dist to dest</span>
+      <span class="valwrap"><input id="dist" type="text" inputmode="decimal" autocomplete="off"><span class="unit">nm</span></span></label>
+    <label class="field gps"><span class="lab"><span class="gpsdot" id="gps-badge"></span>GS · GPS</span>
+      <span class="valwrap"><input id="gs" type="text" inputmode="decimal" autocomplete="off"><span class="unit">kt</span></span></label>
+    <label class="field"><span class="lab">TAS</span>
+      <span class="valwrap"><input id="tas" type="text" inputmode="decimal" autocomplete="off"><span class="unit">kt</span></span></label>
+  </div>
+
+  <div class="row">
+    <label class="field"><span class="lab">Garmin FOD</span>
+      <span class="valwrap"><input id="garmin-fod" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"><span class="unit">gal</span></span></label>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" id="tab-quick" class="tab on" role="tab" aria-selected="true">QUICK WIND</button>
+    <button type="button" id="tab-precise" class="tab" role="tab" aria-selected="false">PRECISE WIND</button>
+  </div>
+
+  <div class="row precise-only">
+    <label class="field"><span class="lab">Course (track)</span>
+      <span class="valwrap"><input id="course" type="text" inputmode="numeric" autocomplete="off"><span class="unit">°</span></span></label>
+    <label class="field"><span class="lab">Mag var</span>
+      <span class="valwrap"><input id="mag-var" type="text" inputmode="decimal" autocomplete="off" placeholder="E+ / W−"><span class="unit">°</span></span></label>
+  </div>
+
+  <div class="youline"><span class="dot"></span><span class="txt" id="you-line">YOU · 0 NM</span><span class="cur">current wind in your GS</span></div>
+
+  <div id="points"></div>
+
+  <button type="button" id="add-point" class="addbtn">+ Add wind point</button>
+
+  <section id="result" class="result" aria-live="polite">
+    <div class="cap">Fuel at destination</div>
+    <div class="big" id="fod-big">—</div>
+    <div class="sub" id="result-sub"></div>
+    <div class="warn" id="result-warning" hidden></div>
+  </section>
+
+  <footer class="foot">Cross-check only — fly the Garmin.</footer>
+</main>
+
+<template id="point-template">
+  <div class="wp">
+    <div class="wpnum"></div>
+    <label class="cell"><span class="lab">Dist from you</span>
+      <span class="inputbox"><input type="text" inputmode="decimal" autocomplete="off" data-field="dist"><span class="unit">nm</span></span></label>
+    <label class="cell quick-only"><span class="lab">Wind from here</span>
+      <span class="inputbox"><input type="text" inputmode="decimal" autocomplete="off" data-field="comp"><span class="unit">kt</span></span></label>
+    <label class="cell precise-only"><span class="lab">Wind dir</span>
+      <span class="inputbox"><input type="text" inputmode="numeric" autocomplete="off" data-field="windDir"><span class="unit">°</span></span></label>
+    <label class="cell precise-only"><span class="lab">Wind spd</span>
+      <span class="inputbox"><input type="text" inputmode="decimal" autocomplete="off" data-field="windSpeed"><span class="unit">kt</span></span></label>
+    <div class="cell precise-only compbox"><span class="lab">Comp.</span><span class="val comp-out" data-readout="comp">—</span></div>
+    <button type="button" class="rm" data-remove aria-label="Remove wind point">×</button>
+  </div>
+</template>
+</body>
+</html>
