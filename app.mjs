@@ -272,6 +272,44 @@ rebuildPoints();
 setMode('quick');
 
 // Offline support: registration failure must never break the app.
+const APP_VERSION = 'v3';
 try {
+  const verEl = document.getElementById('app-version');
+  if (verEl) verEl.textContent = APP_VERSION;
+
   navigator.serviceWorker?.register('sw.js')?.catch(() => {});
+
+  // When a new service worker takes control, reload once so the pilot
+  // immediately runs the new version. The guard prevents reload loops.
+  let reloaded = false;
+  navigator.serviceWorker?.addEventListener('controllerchange', () => {
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
+  });
+
+  const updateBtn = document.getElementById('update-btn');
+  updateBtn?.addEventListener('click', async () => {
+    updateBtn.disabled = true;
+    updateBtn.textContent = 'Checking…';
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      await reg?.update();
+      // If a new version was found, install → activate → controllerchange
+      // fires and the page reloads. Otherwise say we're current.
+      setTimeout(() => {
+        updateBtn.textContent = 'Up to date';
+        setTimeout(() => {
+          updateBtn.textContent = 'Check for update';
+          updateBtn.disabled = false;
+        }, 2000);
+      }, 3000);
+    } catch {
+      updateBtn.textContent = 'Offline — try later';
+      setTimeout(() => {
+        updateBtn.textContent = 'Check for update';
+        updateBtn.disabled = false;
+      }, 2000);
+    }
+  });
 } catch { /* ignore */ }

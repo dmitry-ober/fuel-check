@@ -1,6 +1,6 @@
 // Cache-first service worker. All paths are relative (app is served from a subpath).
 // IMPORTANT: bump CACHE on every deploy, otherwise clients keep serving stale files.
-const CACHE = 'fuel-check-v2';
+const CACHE = 'fuel-check-v3';
 const ASSETS = [
   '.',
   'index.html',

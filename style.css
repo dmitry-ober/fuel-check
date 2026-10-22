@@ -51,6 +51,10 @@ body:not(.precise) .precise-only,body.precise .quick-only,[hidden]{display:none!
 .result.bad{background:#2a1214;border-color:#7a2e34}
 .result.bad .big{color:var(--red)}
 .foot{margin-top:14px;text-align:center;font-size:11px;color:var(--muted)}
+.foot-update{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:10px}
+#app-version{font-variant-numeric:tabular-nums}
+#update-btn{min-height:44px;padding:0 16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+#update-btn:disabled{color:var(--muted)}
 .result.idle{background:var(--panel);border-color:var(--border)}
 .result.idle .big{color:var(--muted)}
 .wp.err{border-color:var(--red)}
