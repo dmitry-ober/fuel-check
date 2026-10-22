@@ -199,21 +199,25 @@ function setGps(next) {
   el.badge.classList.toggle('manual', next === 'manual');
 }
 let gpsWatching = false;
+let gpsDenied = false; // permanent failure (PERMISSION_DENIED); cleared only by a real fix
 function onGpsFix(pos) {
+  gpsDenied = false;
   const kt = gpsSpeedToKt(pos?.coords?.speed);
   if (gpsState === 'off') setGps('gps'); // recovered after an earlier error
   if (kt == null || gpsState !== 'gps') return;
   el.gs.value = String(kt);
   render();
 }
-function onGpsError() {
+function onGpsError(err) {
   // Permission denied or position unavailable: show GPS OFF, keep manual entry usable.
-  if (gpsState !== 'manual') setGps('off'); // never clobber the pilot's manual override
+  if (err && err.code === 1) gpsDenied = true;
+  // A transient error never clobbers a manual override; a denial always shows OFF.
+  if (gpsDenied || gpsState !== 'manual') setGps('off');
 }
-el.gs.addEventListener('input', () => { if (gpsWatching) setGps('manual'); });
+el.gs.addEventListener('input', () => { if (gpsWatching && gpsState === 'gps') setGps('manual'); });
 el.badge.addEventListener('click', (e) => {
   e.preventDefault();
-  if (gpsState === 'manual') setGps('gps');
+  if (gpsState === 'manual') setGps(gpsDenied ? 'off' : 'gps');
 });
 setGps('off');
 try {

@@ -19,7 +19,7 @@ input::placeholder{color:#43556a;font-weight:400;font-size:13px}
 .gps .lab{color:var(--green)}
 .gpsbadge{position:relative;font:inherit;font-size:9.5px;letter-spacing:.06em;font-weight:700;text-transform:uppercase;color:var(--green);background:transparent;border:0;padding:0 0 0 12px;margin-left:4px;cursor:pointer}
 .gpsbadge::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--green)}
-.gpsbadge::after{content:"";position:absolute;inset:-16px -10px}
+.gpsbadge::after{content:"";position:absolute;inset:-12px -10px -6px -10px}
 .gpsbadge.off,.gpsbadge.manual{color:#7b8fa3}
 .gpsbadge.off::before,.gpsbadge.manual::before{background:#7b8fa3}
 .gpsbadge.off{cursor:default}
