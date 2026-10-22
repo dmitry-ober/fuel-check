@@ -230,3 +230,8 @@ try {
 
 rebuildPoints();
 setMode('quick');
+
+// Offline support: registration failure must never break the app.
+try {
+  navigator.serviceWorker?.register('sw.js')?.catch(() => {});
+} catch { /* ignore */ }
